@@ -49,6 +49,9 @@ function db(array $extraOptions = []): PDO
 
 function pageHeader(string $title): void
 {
+    // The built-in server keeps one process across requests; without a reset,
+    // a page would report the peak of whatever ran before it.
+    memory_reset_peak_usage();
     echo "<!doctype html><meta charset='utf-8'><title>{$title}</title>";
     echo "<style>body{font-family:ui-monospace,monospace;max-width:820px;margin:2rem auto;padding:0 1rem;line-height:1.5}
         pre{background:#f4f4f4;padding:1rem;overflow-x:auto}
