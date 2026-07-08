@@ -68,6 +68,11 @@ jobs:
           echo '--- what the page shows ---'
           grep -o 'Processed [^<]*' site/fixed.html
 
+      - name: Diagnostics
+        run: |
+          curl -sS "http://127.0.0.1:8080/debug.php" -o site/debug.html
+          sed 's/<[^>]*>//g' site/debug.html
+
       - name: Build report index
         run: |
           BROKEN=$(sed 's/<[^>]*>//g' site/broken.html | grep -o 'Fatal error.*' | head -1)
