@@ -70,8 +70,8 @@ jobs:
 
       - name: Build report index
         run: |
-          BROKEN=$(grep -o 'Fatal error[^<]*' site/broken.html | head -1)
-          FIXED=$(grep -o 'Processed [^<]*' site/fixed.html | head -1)
+          BROKEN=$(sed 's/<[^>]*>//g' site/broken.html | grep -o 'Fatal error.*' | head -1)
+          FIXED=$(sed 's/<[^>]*>//g' site/fixed.html | grep -o 'Processed .*' | head -1)
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           cat > site/index.html <<EOF
           <!doctype html><meta charset="utf-8"><title>PDO memory demo — live run</title>

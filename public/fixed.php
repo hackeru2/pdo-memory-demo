@@ -4,7 +4,9 @@ require __DIR__ . '/../src/db.php';
 set_time_limit(300);
 pageHeader('fixed.php — unbuffered query, row-by-row fetch');
 
-echo '<pre>$pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+echo '<pre>$pdo = new PDO($dsn, $user, $pass, [
+  PDO::MYSQL_ATTR_USE_BUFFERED_QUERY =&gt; false, // stream, don\'t buffer
+]);
 
 $stmt = $pdo->prepare(\'SELECT * FROM largeTable\');
 $stmt->execute();
@@ -14,13 +16,17 @@ while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
 echo '<p>Running it now over the same table&hellip;</p>';
 flush_now();
 
-$pdo = db();
-$start = microtime(true);
-
 // ---- the refactor ----
 // 1. Unbuffered query: mysqlnd no longer copies the whole result set into
 //    PHP memory on execute(); rows stream from the server as we ask for them.
-$pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+//    Passed as a constructor option — setAttribute() after connect is not
+//    honored for this attribute on all driver builds.
+$pdo = db([PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => false]);
+$start = microtime(true);
+
+echo '<p>Buffered-query attribute is now: '
+    . var_export((bool) $pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY), true) . '</p>';
+flush_now();
 
 // 2. fetch() one row at a time instead of fetchAll(), so only a single row
 //    is ever held in PHP memory.

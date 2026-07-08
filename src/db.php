@@ -4,7 +4,7 @@
  * Builds a PDO connection from the DATABASE_URL env var, e.g. the
  * Aiven service URI: mysql://avnadmin:pass@host:port/defaultdb?ssl-mode=REQUIRED
  */
-function db(): PDO
+function db(array $extraOptions = []): PDO
 {
     $url = getenv('DATABASE_URL');
     if ($url === false || $url === '') {
@@ -44,7 +44,7 @@ function db(): PDO
         $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
     }
 
-    return new PDO($dsn, urldecode($parts['user']), urldecode($parts['pass']), $options);
+    return new PDO($dsn, urldecode($parts['user']), urldecode($parts['pass']), $extraOptions + $options);
 }
 
 function pageHeader(string $title): void
