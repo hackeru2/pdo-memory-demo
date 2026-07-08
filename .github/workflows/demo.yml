@@ -1,0 +1,99 @@
+name: run-demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: demo
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/demo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+
+      - name: Start the app with the question's 128M memory limit
+        run: |
+          php -d memory_limit=128M -d display_errors=1 -d max_execution_time=300 \
+              -S 127.0.0.1:8080 -t public &
+          sleep 2
+          mkdir -p site
+
+      - name: Seed largeTable with 200,000 rows
+        run: |
+          curl -sS "http://127.0.0.1:8080/seed.php?rows=200000" -o site/seed.html
+          grep -o 'Done in [^<]*' site/seed.html || (cat site/seed.html; exit 1)
+
+      - name: Run broken.php — expect the real fatal error
+        run: |
+          curl -sS "http://127.0.0.1:8080/broken.php" -o site/broken.html
+          echo '--- what the page shows ---'
+          grep -o 'Fatal error[^<]*' site/broken.html
+          grep -o 'Peak usage[^<]*' site/broken.html || true
+
+      - name: Run fixed.php — same table, streaming
+        run: |
+          curl -sS "http://127.0.0.1:8080/fixed.php" -o site/fixed.html
+          echo '--- what the page shows ---'
+          grep -o 'Processed [^<]*' site/fixed.html
+
+      - name: Build report index
+        run: |
+          BROKEN=$(grep -o 'Fatal error[^<]*' site/broken.html | head -1)
+          FIXED=$(grep -o 'Processed [^<]*' site/fixed.html | head -1)
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          cat > site/index.html <<EOF
+          <!doctype html><meta charset="utf-8"><title>PDO memory demo — live run</title>
+          <style>body{font-family:ui-monospace,monospace;max-width:820px;margin:2rem auto;padding:0 1rem;line-height:1.6}
+          .bad{background:#fdecea;border:1px solid #c0392b;color:#7b241c;padding:1rem;border-radius:6px}
+          .ok{background:#e9f7ef;border:1px solid #0a7d38;color:#145a32;padding:1rem;border-radius:6px}
+          a{color:#2456d6}</style>
+          <h1>PDO memory-exhaustion demo — real run output</h1>
+          <p>Captured from a live PHP 8.3 + MySQL 8.4 run on GitHub-hosted infrastructure
+          (<a href="$RUN_URL">see the run</a>). memory_limit was 128M, largeTable had 200,000 rows.</p>
+          <h2>1. Before the fix</h2>
+          <div class="bad">$BROKEN</div>
+          <p><a href="broken.html">Full captured page: broken.php &rarr;</a></p>
+          <h2>2. After the fix</h2>
+          <div class="ok">$FIXED</div>
+          <p><a href="fixed.html">Full captured page: fixed.php &rarr;</a></p>
+          <p><a href="seed.html">Seeding output</a> &middot; <a href="https://github.com/${{ github.repository }}">Source code</a></p>
+          EOF
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
