@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pdo-memory-demo
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false # paste the Aiven MySQL service URI in the dashboard
+      - key: MYSQL_CA_PEM
+        sync: false # optional: contents of the Aiven project ca.pem
