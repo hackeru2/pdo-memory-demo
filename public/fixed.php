@@ -23,6 +23,7 @@ flush_now();
 //    honored for this attribute on all driver builds.
 $pdo = db([PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => false]);
 $start = microtime(true);
+$memBefore = memory_get_usage();
 
 echo '<p>Buffered-query attribute is now: '
     . var_export((bool) $pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY), true) . '</p>';
@@ -42,5 +43,6 @@ while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
 $elapsed = number_format(microtime(true) - $start, 1);
 echo "<p class='ok'>Processed " . number_format($rows) . " rows in {$elapsed}s. Peak memory: <strong>"
-    . fmtBytes(memory_get_peak_usage(true)) . "</strong> of " . ini_get('memory_limit')
-    . " — the same table that killed <a href='/broken.php'>broken.php</a>.</p>";
+    . fmtBytes(memory_get_peak_usage()) . "</strong> of " . ini_get('memory_limit')
+    . " (grew by " . fmtBytes(max(0, memory_get_usage() - $memBefore))
+    . " during the loop) — the same table that killed <a href='/broken.php'>broken.php</a>.</p>";
