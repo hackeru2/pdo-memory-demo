@@ -68,6 +68,12 @@ jobs:
           echo '--- what the page shows ---'
           grep -o 'Processed [^<]*' site/fixed.html
 
+      - name: Run submitted.php — the gist answer, verbatim
+        run: |
+          curl -sS "http://127.0.0.1:8080/submitted.php" -o site/submitted.html
+          echo '--- what the page shows ---'
+          sed 's/<[^>]*>//g' site/submitted.html | grep -o 'Processed .*'
+
       - name: Diagnostics
         run: |
           curl -sS "http://127.0.0.1:8080/debug.php" -o site/debug.html
@@ -77,6 +83,7 @@ jobs:
         run: |
           BROKEN=$(sed 's/<[^>]*>//g' site/broken.html | grep -o 'Fatal error.*' | head -1)
           FIXED=$(sed 's/<[^>]*>//g' site/fixed.html | grep -o 'Processed .*' | head -1)
+          SUBMITTED=$(sed 's/<[^>]*>//g' site/submitted.html | grep -o 'Processed .*' | head -1)
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           cat > site/index.html <<EOF
           <!doctype html><meta charset="utf-8"><title>PDO memory demo — live run</title>
@@ -93,6 +100,9 @@ jobs:
           <h2>2. After the fix</h2>
           <div class="ok">$FIXED</div>
           <p><a href="fixed.html">Full captured page: fixed.php &rarr;</a></p>
+          <h2>3. The answer submitted to the company (foreach over the statement)</h2>
+          <div class="ok">$SUBMITTED</div>
+          <p><a href="submitted.html">Full captured page: submitted.php &rarr;</a></p>
           <p><a href="seed.html">Seeding output</a> &middot; <a href="https://github.com/${{ github.repository }}">Source code</a></p>
           EOF
 
